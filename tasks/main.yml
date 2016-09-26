@@ -3,7 +3,7 @@
 - name: test out when statement
   debug: msg="{{item}}"
   with_items: "{{ rds[env].db_instances[role_type] }}"
-  when: "{{ item.command == "create" }}"  
+  when: "{{ item.command == 'create'}}"  
 
 - name: Gather facts about the {{role_type}} RDS Subnets in {{env}}
   ec2_vpc_subnet_facts:
@@ -73,7 +73,7 @@
   when: activate_debug|bool    
 
 - name: Create an RDS instance
-  rds_boto3:
+  rds_v2:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
     command: create
@@ -92,12 +92,12 @@
     wait: "{{ item.wait }}"
     wait_timeout: "{{ item.wait_timeout }}"
   with_items: "{{ rds[env].db_instances[role_type] }}"
-  when: "{{ item.command == "create" }}"
+  when: "{{ item.command == 'create' }}"
   register: new_rds_instance  
 
 
 - name: create an RDS instance replica
-  rds_boto3:
+  rds_v2:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
     command: replicate
@@ -110,6 +110,6 @@
     wait: "{{ rds[env].db_instances[role_type].master.wait }}"
     wait_timeout: "{{ rds[env].db_instances[role_type].master.wait_timeout }}"
   with_items: "{{ rds[env].db_instances[role_type] }}"
-  when: "{{ item.command == "replicate" }}"    
+  when: "{{ item.command == 'replicate' }}"    
   register: new_rds_replica  
 
