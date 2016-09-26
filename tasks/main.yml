@@ -1,1 +1,115 @@
 ---
+
+- name: test out when statement
+  debug: msg="{{item}}"
+  with_items: "{{ rds[env].db_instances[role_type] }}"
+  when: "{{ item.command == "create" }}"  
+
+- name: Gather facts about the {{role_type}} RDS Subnets in {{env}}
+  ec2_vpc_subnet_facts:
+    region: "{{ region }}"
+    profile: "{{ aws_account_name }}"
+    filters:
+      "tag:Environment": "{{env}}"
+      "tag:Role": "{{role_type}}"
+  register: rds_subnets
+
+- debug: msg="{{subnets}}"
+  when: activate_debug|bool
+
+- name: Gather facts about the {{role_type}} RDS Security Groups in {{env}}
+  ec2_group_facts:
+    filters:
+      "tag:Environment": "{{env}}"
+      "tag:Role": "{{role_type}}_rds"
+      "tag:Name" : "xvt-{{vpc_name}}-{{role_type}}-rds"
+  register: rds_security_groups
+
+- debug: msg="{{rds_security_groups}}"
+  when: activate_debug|bool  
+
+- fail: msg="Stopping"
+
+- name: create the rds_subnet_group
+  rds_subnet_group:
+    region: "{{ region }}"
+    profile: "{{ aws_account_name }}"
+    name: "{{ rds[env].subnet_groups[role_type].name }}"
+    description: "{{ rds[env].subnet_groups[role_type].description }}"
+    subnets: "{{ rds_subnets.subnets }}"
+    state: present
+  register: rds_subnet_group
+
+- debug: msg="{{rds_subnet_group}}"
+  when: activate_debug|bool  
+
+- name: create the parameter_group
+  rds_param_group:
+    name: "{{ rds[env].parameter_groups[role_type].name }}"
+    description: "{{ rds[env].parameter_groups[role_type].description }}"
+    engine: "{{ rds[env].parameter_groups[role_type].engine }}"
+    params: "{{ rds[env].parameter_groups[role_type].params }}"
+    state: present    
+  with_items: "{{ rds[env].parameter_group[role_type] }}"    
+  register: rds_param_group
+
+- debug: msg="{{rds_param_group}}"
+  when: activate_debug|bool    
+
+- name: create the option_group
+  rds_option_group:
+    region: "{{ region }}"
+    profile: "{{ aws_account_name }}"
+    option_group_name: "{{ item.option_group.name }}"
+    engine_name: "{{ item.option_group.engine_name }}"
+    major_engine_version: "{{ item.option_group.major_engine_version }}"
+    option_group_description: "{{ item.option_group.option_group_description }}"
+    apply_immediately: "{{ item.option_group.apply_immediately }}"
+    state: present
+  with_items: "{{ rds[env].option_groups[role_type] }}"
+  register: rds_option_group
+
+- debug: msg="{{rds_option_group}}"
+  when: activate_debug|bool    
+
+- name: Create an RDS instance
+  rds_boto3:
+    region: "{{ region }}"
+    profile: "{{ aws_account_name }}"
+    command: create
+    db_instance_identifier: "{{ item.db_instance_identifier }}"
+    engine: "{{ item.master.engine }}"
+    db_instance_class: "{{ item.db_instance_class}}"
+    master_username: "{{ item.master_username }}"
+    master_user_password: "{{ item.master_user_password }}"
+    allocated_storage: "{{ item.allocated_storage }}"
+    db_parameter_group_name: "{{  }}"
+    option_group_name: "{{  }}"
+    # Must be an array
+    vpc_security_group_ids: "{{  }}"  
+    db_subnet_group_name: "{{ }}"
+    tags: "{{ item.tags }}"
+    wait: "{{ item.wait }}"
+    wait_timeout: "{{ item.wait_timeout }}"
+  with_items: "{{ rds[env].db_instances[role_type] }}"
+  when: "{{ item.command == "create" }}"
+  register: new_rds_instance  
+
+
+- name: create an RDS instance replica
+  rds_boto3:
+    region: "{{ region }}"
+    profile: "{{ aws_account_name }}"
+    command: replicate
+    source_db_instance_identifier: test-instance    
+    db_instance_identifier: test-instance-read-replica
+    availability_zone: ap-southeast-2a
+    db_instance_class: db.t2.medium
+    option_group_name: test-option-group
+    tags: "{{ rds[env].db_instances[role_type].replica1.tags }}"
+    wait: "{{ rds[env].db_instances[role_type].master.wait }}"
+    wait_timeout: "{{ rds[env].db_instances[role_type].master.wait_timeout }}"
+  with_items: "{{ rds[env].db_instances[role_type] }}"
+  when: "{{ item.command == "replicate" }}"    
+  register: new_rds_replica  
+
