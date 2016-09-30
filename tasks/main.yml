@@ -20,13 +20,16 @@
       "tag:Name" : "xvt-{{vpc_name}}-{{role_type}}-rds"
   register: rds_security_groups
 
-- debug: msg="{{rds_security_groups}}"
+- debug: msg="{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
   when: activate_debug|bool  
 
-# - debug: msg="{{item.value.name}}"
-#   with_dict: "{{ rds[env].subnet_groups[role_type]}}"
+- name: set the security group list fact
+  set_fact:
+    vpc_security_group_ids: "{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
 
-# - fail: msg="Stopping"
+
+- debug: msg="{{item.value.name}}"
+  with_dict: "{{ rds[env][role_type].subnet_groups }}"
 
 - name: create the rds_subnet_group
   rds_subnet_group:
@@ -36,26 +39,34 @@
     description: "{{ item.value.description }}"
     subnets: "{{ rds_subnets.subnets | map(attribute='id') |list }}"
     state: present
-  with_dict: "{{ rds[env].subnet_groups[role_type]}}"
+  with_dict: "{{ rds[env][role_type].subnet_groups }}"
   register: rds_subnet_group
 
-- debug: msg="{{rds_subnet_group}}"
+- debug: msg="{{rds_subnet_group.results[0].item.value.name}}"
   when: activate_debug|bool  
 
-- name: create the parameter_group
-  rds_param_group:
-    name: "{{ item.value.name }}"
-    description: "{{ item.value.description }}"
-    engine: "{{ item.value.engine }}"
-    params: "{{ item.value.params }}"
-    state: present    
-  with_dict: "{{ rds[env].parameter_groups[role_type] }}"    
-  register: rds_param_group
+- name: set the db_subnet_group_name fact
+  set_fact:
+    db_subnet_group_name: "{{rds_subnet_group.results[0].item.value.name}}"
 
-- debug: msg="{{rds_param_group}}"
-  when: activate_debug|bool    
+# - name: create the parameter_group
+#   rds_param_group:
+#     name: "{{ item.value.name }}"
+#     description: "{{ item.value.description }}"
+#     engine: "{{ item.value.engine }}"
+#     params: "{{ item.value.params }}"
+#     state: present    
+#   with_dict: "{{ rds[env][role_type].parameter_groups }}"    
+#   register: rds_param_group
 
-- name: create the option_group
+# - debug: msg="{{rds_param_group.results[0].item.value.name}}"
+#   when: activate_debug|bool    
+
+# - name: set the parameter_group_name fact
+#   set_fact:
+#     db_parameter_group_name: "{{rds_param_group.results[0].item.value.name}}"
+
+- name: create the option_group_name
   rds_option_group:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
@@ -65,37 +76,72 @@
     option_group_description: "{{ item.value.option_group_description }}"
     apply_immediately: "{{ item.value.apply_immediately }}"
     state: present
-  with_dict: "{{ rds[env].option_groups[role_type] }}"
+  with_dict: "{{ rds[env][role_type].option_groups }}"
   register: rds_option_group
 
-- debug: msg="{{rds_option_group}}"
+- debug: msg="{{rds_option_group.results[0].item.value.option_group_name }}"
   when: activate_debug|bool    
 
-- fail: msg="Stopping"
+- name: set the option_group_name fact
+  set_fact:
+    option_group_name: "{{rds_option_group.results[0].item.value.option_group_name }}"
 
-# - name: Create an RDS instance
-#   rds_v2:
-#     region: "{{ region }}"
+- name: Create an RDS instance
+  rds_v2:
+    region: "{{ region }}"
+    profile: "{{ aws_account_name }}"
+    command: create
+    db_instance_identifier: "{{ item.value.db_instance_identifier }}"
+    engine: "{{ item.value.engine }}"
+    db_instance_class: "{{ item.value.db_instance_class}}"
+    master_username: "{{ item.value.master_username }}"
+    master_user_password: "{{ item.value.master_user_password }}"
+    allocated_storage: "{{ item.value.allocated_storage }}"
+    # db_parameter_group_name: "{{ db_parameter_group_name  }}"
+    option_group_name: "{{ option_group_name }}"
+    # Must be an array
+    vpc_security_group_ids: "{{ vpc_security_group_ids }}"  
+    db_subnet_group_name: "{{ db_subnet_group_name }}"
+    tags: "{{ item.value.tags }}"
+    wait: "{{ item.value.wait }}"
+    wait_timeout: "{{ item.value.wait_timeout }}"
+  with_dict: "{{ rds[env][role_type].db_instances }}"
+  register: master_rds_instance
+
+
+- name: "Return RDS facts for tagged instance"
+  rds_facts:
+    region: "{{region}}"
+    profile: "{{aws_account_name}}"
+    filters: 
+       'tag:Name': "{{ vpc_name }}-{{role_type}}-rds-master"
+       'tag:Environment': "{{env}}"
+  register: rds_master
+
+- debug: msg="{{ rds_master.rds}}"
+
+- name: set rds fact
+  set_fact:
+    rds:
+      endpoint: "{{rds_master.rds.endpoint}}"
+      port: "{{rds_master.rds.port}}"
+
+- debug: msg="{{ hostvars['localhost']}}"
+- debug: msg="{{ hostvars['localhost'].rds}}"
+
+# - name: Create Route 53 internal rds master record entry for {{role_type}}
+#   route53:
 #     profile: "{{ aws_account_name }}"
+#     private_zone: true
 #     command: create
-#     db_instance_identifier: "{{ item.db_instance_identifier }}"
-#     engine: "{{ item.master.engine }}"
-#     db_instance_class: "{{ item.db_instance_class}}"
-#     master_username: "{{ item.master_username }}"
-#     master_user_password: "{{ item.master_user_password }}"
-#     allocated_storage: "{{ item.allocated_storage }}"
-#     db_parameter_group_name: "{{  }}"
-#     option_group_name: "{{  }}"
-#     # Must be an array
-#     vpc_security_group_ids: "{{  }}"  
-#     db_subnet_group_name: "{{ }}"
-#     tags: "{{ item.tags }}"
-#     wait: "{{ item.wait }}"
-#     wait_timeout: "{{ item.wait_timeout }}"
-#   with_items: "{{ rds[env].db_instances[role_type] }}"
-#   when: "{{ item.command == 'create' }}"
-#   register: new_rds_instance  
-
+#     zone: "{{ env }}.{{ tld_name_internal }}"
+#     record: "{{ elb_dns_record }}.{{env}}.{{ tld_name_internal }}"
+#     value: "{{ newly_created_elb.elb.dns_name }}"
+#     type: CNAME
+#     ttl: 300
+#     overwrite: yes
+#     retry_interval: 5
+#   when: stage != "delete"
 
 # - name: create an RDS instance replica
 #   rds_v2:
