@@ -27,6 +27,10 @@
   set_fact:
     vpc_security_group_ids: "{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
 
+- debug: msg="{{ vpc_security_group_ids }}"
+# - debug: msg="{{ rds[env] }}"
+
+# - fail: msg="stop"
 
 - debug: msg="{{item.value.name}}"
   with_dict: "{{ rds[env][role_type].subnet_groups }}"
@@ -143,20 +147,20 @@
 - debug: msg="{{data.json[0].Value |b64decode }}"
 
 
-- name: Create the {{role_type}}-{{ db_instance_type }} RDS instance 
-  rds_v2:
-    region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
-    command: replicate
-    source_db_instance_identifier: test-instance    
-    db_instance_identifier: test-instance-read-replica
-    availability_zone: ap-southeast-2a
-    db_instance_class: db.t2.medium
-    option_group_name: test-option-group
-    tags: "{{ rds[env].db_instances[role_type].replica1.tags }}"
-    wait: "{{ rds[env].db_instances[role_type].master.wait }}"
-    wait_timeout: "{{ rds[env].db_instances[role_type].master.wait_timeout }}"
-  with_items: "{{ rds[env].db_instances[role_type] }}"
-  when: "{{ item.command == 'replicate' }}"    
-  register: new_rds_replica  
+# - name: Create the {{role_type}}-{{ db_instance_type }} RDS instance 
+#   rds_v2:
+#     region: "{{ region }}"
+#     profile: "{{ aws_account_name }}"
+#     command: replicate
+#     source_db_instance_identifier: test-instance    
+#     db_instance_identifier: test-instance-read-replica
+#     availability_zone: ap-southeast-2a
+#     db_instance_class: db.t2.medium
+#     option_group_name: test-option-group
+#     tags: "{{ rds[env].db_instances[role_type].replica1.tags }}"
+#     wait: "{{ rds[env].db_instances[role_type].master.wait }}"
+#     wait_timeout: "{{ rds[env].db_instances[role_type].master.wait_timeout }}"
+#   with_items: "{{ rds[env].db_instances[role_type] }}"
+#   when: "{{ item.command == 'replicate' }}"    
+#   register: new_rds_replica  
 
