@@ -51,23 +51,23 @@
   set_fact:
     db_subnet_group_name: "{{rds_subnet_group.results[0].item.value.name}}"
 
-#- name: create the parameter_group
-#  rds_param_group:
-#    region: "{{region}}"
-#    name: "{{ item.value.name }}"
-#    description: "{{ item.value.description }}"
-#    engine: "{{ item.value.engine }}"
-#    params: "{{ item.value.params }}"
-#    state: present
-#  with_dict: "{{ rds[env][role_type].parameter_groups }}"
-#  register: rds_param_group
-#
-#- debug: msg="{{rds_param_group.results[0].item.value.name}}"
-#  when: activate_debug|bool
-#
-#- name: set the parameter_group_name fact
-#  set_fact:
-#    db_parameter_group_name: "{{rds_param_group.results[0].item.value.name}}"
+- name: create the parameter_group
+  rds_param_group:
+    region: "{{region}}"
+    name: "{{ item.value.name }}"
+    description: "{{ item.value.description }}"
+    params: "{{ item.value.params }}"
+    engine: "{{ rds[env][role_type].option_groups.engine_name }}{{ rds[env][role_type].option_groups.major_engine_version }}"
+    state: present
+  with_dict: "{{ rds[env][role_type].parameter_groups }}"
+  register: rds_param_group
+
+- debug: msg="{{rds_param_group.results[0].item.value.name}}"
+  when: activate_debug|bool
+
+- name: set the parameter_group_name fact
+  set_fact:
+    db_parameter_group_name: "{{rds_param_group.results[0].item.value.name}}"
 
 - name: create the option_group_name
   rds_option_group:
@@ -103,7 +103,7 @@
     master_user_password: "{{ item.value.master_user_password }}"
     allocated_storage: "{{ item.value.allocated_storage }}"
     storage_type: "{{ item.value.storage_type }}"
-    #db_parameter_group_name: "{{ db_parameter_group_name  }}"
+    db_parameter_group_name: "{{ db_parameter_group_name  }}"
     option_group_name: "{{ option_group_name }}"
     # Must be an array
     vpc_security_group_ids: "{{ vpc_security_group_ids }}"
