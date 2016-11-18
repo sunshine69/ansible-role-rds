@@ -21,20 +21,17 @@
   register: rds_security_groups
 
 - debug: msg="{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
-  when: activate_debug|bool  
+  when: activate_debug|bool
 
 - name: set the security group list fact
   set_fact:
     vpc_security_group_ids: "{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
 
-- debug: msg="{{ vpc_security_group_ids }}"
-# - debug: msg="{{ rds[env] }}"
-
-# - fail: msg="stop"
+- debug: msg="{{ vpc_security_group_ids}}"
+#- debug: msg="{{ rds[env]}}"
 
 - debug: msg="{{item.value.name}}"
   with_dict: "{{ rds[env][role_type].subnet_groups }}"
-
 
 - name: create the rds_subnet_group
   rds_subnet_group:
@@ -48,48 +45,50 @@
   register: rds_subnet_group
 
 - debug: msg="{{rds_subnet_group.results[0].item.value.name}}"
-  when: activate_debug|bool  
+  when: activate_debug|bool
 
 - name: set the db_subnet_group_name fact
   set_fact:
     db_subnet_group_name: "{{rds_subnet_group.results[0].item.value.name}}"
 
-# - name: create the parameter_group
-#   rds_param_group:
-#     name: "{{ item.value.name }}"
-#     description: "{{ item.value.description }}"
-#     engine: "{{ item.value.engine }}"
-#     params: "{{ item.value.params }}"
-#     state: present    
-#   with_dict: "{{ rds[env][role_type].parameter_groups }}"    
-#   register: rds_param_group
-
-# - debug: msg="{{rds_param_group.results[0].item.value.name}}"
-#   when: activate_debug|bool    
-
-# - name: set the parameter_group_name fact
-#   set_fact:
-#     db_parameter_group_name: "{{rds_param_group.results[0].item.value.name}}"
+#- name: create the parameter_group
+#  rds_param_group:
+#    region: "{{region}}"
+#    name: "{{ item.value.name }}"
+#    description: "{{ item.value.description }}"
+#    engine: "{{ item.value.engine }}"
+#    params: "{{ item.value.params }}"
+#    state: present
+#  with_dict: "{{ rds[env][role_type].parameter_groups }}"
+#  register: rds_param_group
+#
+#- debug: msg="{{rds_param_group.results[0].item.value.name}}"
+#  when: activate_debug|bool
+#
+#- name: set the parameter_group_name fact
+#  set_fact:
+#    db_parameter_group_name: "{{rds_param_group.results[0].item.value.name}}"
 
 - name: create the option_group_name
   rds_option_group:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
-    option_group_name: "{{ item.value.option_group_name }}"
-    engine_name: "{{ item.value.engine_name }}"
-    major_engine_version: "{{ item.value.major_engine_version }}"
-    option_group_description: "{{ item.value.option_group_description }}"
-    apply_immediately: "{{ item.value.apply_immediately }}"
+    option_group_name: "{{ item.option_group_name }}"
+    engine_name: "{{ item.engine_name }}"
+    major_engine_version: "{{ item.major_engine_version }}"
+    option_group_description: "{{ item.option_group_description }}"
+    apply_immediately: "{{ item.apply_immediately }}"
     state: present
-  with_dict: "{{ rds[env][role_type].option_groups }}"
+  with_items:
+    - "{{ rds[env][role_type].option_groups }}"
   register: rds_option_group
 
-- debug: msg="{{rds_option_group.results[0].item.value.option_group_name }}"
-  when: activate_debug|bool    
+- debug: msg="{{rds_option_group.results[0].item.option_group_name}}"
+  when: activate_debug|bool
 
 - name: set the option_group_name fact
   set_fact:
-    option_group_name: "{{rds_option_group.results[0].item.value.option_group_name }}"
+    option_group_name: "{{ rds_option_group.results[0].item.option_group_name }}"
 
 - name: Create the {{role_type}}-{{ db_instance_type }} RDS instance
   rds_v2:
@@ -98,15 +97,16 @@
     command: create
     db_instance_identifier: "{{ item.value.db_instance_identifier }}"
     engine: "{{ item.value.engine }}"
+    engine_version: "{{ rds[env][role_type].option_groups.major_engine_version }}"
     db_instance_class: "{{ item.value.db_instance_class}}"
     master_username: "{{ item.value.master_username }}"
     master_user_password: "{{ item.value.master_user_password }}"
     allocated_storage: "{{ item.value.allocated_storage }}"
     storage_type: "{{ item.value.storage_type }}"
-    # db_parameter_group_name: "{{ db_parameter_group_name  }}"
+    #db_parameter_group_name: "{{ db_parameter_group_name  }}"
     option_group_name: "{{ option_group_name }}"
     # Must be an array
-    vpc_security_group_ids: "{{ vpc_security_group_ids }}"  
+    vpc_security_group_ids: "{{ vpc_security_group_ids }}"
     db_subnet_group_name: "{{ db_subnet_group_name }}"
     tags: "{{ item.value.tags }}"
     wait: "{{ item.value.wait }}"
@@ -127,32 +127,31 @@
     ttl: 300
     overwrite: yes
     retry_interval: 5
-  when: stage != "delete"  
+  when: stage != "delete"
 
-- name: add the rds endpoint to {{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}
-  consul_kv:
-    key: "{{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}/endpoint"
-    value: "{{ role_type }}-{{ db_instance_type }}.{{env}}.{{ tld_name_internal }}"
+#- name: add the rds endpoint to {{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}
+#  consul_kv:
+#    key: "{{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}/endpoint"
+#    value: "{{ role_type }}-{{ db_instance_type }}.{{env}}.{{ tld_name_internal }}"
+#
+#- name: add the rds port to {{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}
+#  consul_kv:
+#    key: "{{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}/port"
+#    value: "{{master_rds_instance.results[0].rds.DBInstances[0].Endpoint.Port}}"
 
-- name: add the rds port to {{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}
-  consul_kv:
-    key: "{{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}/port"
-    value: "{{master_rds_instance.results[0].rds.DBInstances[0].Endpoint.Port}}" 
+#- name: Grab the {{role_type}}-{{ db_instance_type }} endpoint
+#  uri:
+#    url: "http://localhost:8500/v1/kv/{{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}/endpoint?recurse"
+#  register: data
+#
+#- debug: msg="{{data.json[0].Value |b64decode}}"
 
-- name: Grab the {{role_type}}-{{ db_instance_type }} endpoint
-  uri: 
-    url: "http://localhost:8500/v1/kv/{{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}/endpoint?recurse"
-  register: data
-
-- debug: msg="{{data.json[0].Value |b64decode }}"
-
-
-# - name: Create the {{role_type}}-{{ db_instance_type }} RDS instance 
+# - name: Create the {{role_type}}-{{ db_instance_type }} RDS instance
 #   rds_v2:
 #     region: "{{ region }}"
 #     profile: "{{ aws_account_name }}"
 #     command: replicate
-#     source_db_instance_identifier: test-instance    
+#     source_db_instance_identifier: test-instance
 #     db_instance_identifier: test-instance-read-replica
 #     availability_zone: ap-southeast-2a
 #     db_instance_class: db.t2.medium
@@ -160,7 +159,7 @@
 #     tags: "{{ rds[env].db_instances[role_type].replica1.tags }}"
 #     wait: "{{ rds[env].db_instances[role_type].master.wait }}"
 #     wait_timeout: "{{ rds[env].db_instances[role_type].master.wait_timeout }}"
-#   with_items: "{{ rds[env].db_instances[role_type] }}"
-#   when: "{{ item.command == 'replicate' }}"    
-#   register: new_rds_replica  
-
+##   with_items: "{{ rds[env].db_instances[role_type] }}"
+##   when: "{{ item.command == 'replicate' }}"
+##   register: new_rds_replica
+#...
