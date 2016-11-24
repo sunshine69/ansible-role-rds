@@ -20,6 +20,9 @@
       "tag:Name" : "xvt-{{vpc_name}}-{{role_type}}-rds"
   register: rds_security_groups
 
+- fail: msg="Not found any security group xvt-{{vpc_name}}-{{role_type}}-rds"
+  when: rds_security_groups.groups|length == 0
+
 - debug: msg="{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
   when: activate_debug|bool
 
