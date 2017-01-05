@@ -34,7 +34,7 @@
 
 - debug:
     msg: "List of rds_security_groups found {{ vpc_security_group_ids}}"
-#- debug: msg="{{ rds[env]}}"
+#- debug: msg="{{rds}}"
 
 - debug:
     msg: "subnet_groups from variables {{item.value.name}}"
