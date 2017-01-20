@@ -98,7 +98,7 @@
     option_group_name: "{{ rds_option_group.results[0].item.option_group_name }}"
 
 - name: get the drupal version tag when we build role image
-  include: "{{role_path}}/../common/lookup_drupal_version.yml"
+  set_fact: drupal_version_dash="{{ 'drupal_version_dash'|lookup_redis('unknown')}}"
 
 - name: Create the {{role_type}}-{{ db_instance_type }} RDS instance
   rds_v2:
