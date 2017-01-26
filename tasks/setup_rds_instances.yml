@@ -101,15 +101,12 @@
   set_fact:
     option_group_name: "{{ rds_option_group.results[0].item.option_group_name }}"
 
-- name: get the drupal version tag when we build role image
-  set_fact: drupal_version_dash="{{ 'drupal_version_dash'|lookup_redis('unknown')}}"
-
 - name: Create the {{role_type}}-{{ db_instance_type }} RDS instance
   rds_v2:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
     command: create
-    db_instance_identifier: "{{ item.value.db_instance_identifier }}-{{drupal_version_dash}}"
+    db_instance_identifier: "{{ item.value.db_instance_identifier }}"
     engine: "{{ item.value.engine }}"
     engine_version: "{{ rds[env][role_type].option_groups.major_engine_version }}"
     db_instance_class: "{{ item.value.db_instance_class}}"
