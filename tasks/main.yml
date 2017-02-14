@@ -1,4 +1,1 @@
----
-
-- { include: setup_rds_instances.yml, when: stage != "delete" }
-- { include: terminate_rds_instances.yml, when: stage == "delete" }
+- include: "{{ stage }}_rds_instances.yml"

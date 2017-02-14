@@ -9,8 +9,9 @@
       "tag:Role": "{{role_type}}_rds"
   register: rds_subnets
 
-- debug: msg="{{rds_subnets}}"
-  when: activate_debug|bool
+- debug:
+    var: rds_subnets
+    verbosity: 2
 
 - name: Gather facts about the {{role_type}} RDS Security Groups in {{env}}
   ec2_group_facts:
@@ -25,8 +26,9 @@
 - fail: msg="Not found any security group xvt-{{vpc_name}}-sg-{{role_type}}-rds"
   when: rds_security_groups.groups|length == 0
 
-- debug: msg="{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
-  when: activate_debug|bool
+- debug:
+    msg: "{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
+    verbosity: 2
 
 - name: set the security group list fact
   set_fact:
@@ -34,9 +36,11 @@
 
 - debug:
     msg: "List of rds_security_groups found {{ vpc_security_group_ids}}"
+    verbosity: 2
 
 - debug:
     msg: "subnet_groups from variables {{item.value.name}}"
+    verbosity: 2
   with_dict: "{{ rds[env][role_type].subnet_groups }}"
 # If existing subnet group having different vpc-id then the below will fail
 # with message 'The new Subnets are not in the same Vpc as the existing subnet
@@ -54,8 +58,9 @@
   with_dict: "{{ rds[env][role_type].subnet_groups }}"
   register: rds_subnet_group
 
-- debug: msg="{{rds_subnet_group.results[0].item.value.name}}"
-  when: activate_debug|bool
+- debug:
+    msg: "{{rds_subnet_group.results[0].item.value.name}}"
+    verbosity: 2
 
 - name: set the db_subnet_group_name fact
   set_fact:
@@ -73,8 +78,9 @@
   with_dict: "{{ rds[env][role_type].parameter_groups }}"
   register: rds_param_group
 
-- debug: msg="{{rds_param_group.results[0].item.value.name}}"
-  when: activate_debug|bool
+- debug:
+    msg: "{{rds_param_group.results[0].item.value.name}}"
+    verbosity: 2
 
 - name: set the parameter_group_name fact
   set_fact:
@@ -94,8 +100,9 @@
     - "{{ rds[env][role_type].option_groups }}"
   register: rds_option_group
 
-- debug: msg="{{rds_option_group.results[0].item.option_group_name}}"
-  when: activate_debug|bool
+- debug:
+    msg: "{{rds_option_group.results[0].item.option_group_name}}"
+    verbosity: 2
 
 - name: set the option_group_name fact
   set_fact:
