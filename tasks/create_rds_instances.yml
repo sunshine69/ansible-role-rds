@@ -41,7 +41,7 @@
 - debug:
     msg: "subnet_groups from variables {{item.value.name}}"
     verbosity: 2
-  with_dict: "{{ rds[env][role_type].subnet_groups }}"
+  with_dict: "{{ rds[role_type].subnet_groups }}"
 # If existing subnet group having different vpc-id then the below will fail
 # with message 'The new Subnets are not in the same Vpc as the existing subnet
 # group'. Reason is aws does not allow to edit/change the vpcid.
@@ -55,7 +55,7 @@
     description: "{{ item.value.description }}"
     subnets: "{{ rds_subnets.subnets | map(attribute='id') |list }}"
     state: present
-  with_dict: "{{ rds[env][role_type].subnet_groups }}"
+  with_dict: "{{ rds[role_type].subnet_groups }}"
   register: rds_subnet_group
 
 - debug:
@@ -73,9 +73,9 @@
     name: "{{ item.value.name }}"
     description: "{{ item.value.description }}"
     params: "{{ item.value.params }}"
-    engine: "{{ rds[env][role_type].option_groups.engine_name }}{{ rds[env][role_type].option_groups.major_engine_version }}"
+    engine: "{{ rds[role_type].option_groups.engine_name }}{{ rds[role_type].option_groups.major_engine_version }}"
     state: present
-  with_dict: "{{ rds[env][role_type].parameter_groups }}"
+  with_dict: "{{ rds[role_type].parameter_groups }}"
   register: rds_param_group
 
 - debug:
@@ -97,7 +97,7 @@
     apply_immediately: "{{ item.apply_immediately }}"
     state: present
   with_items:
-    - "{{ rds[env][role_type].option_groups }}"
+    - "{{ rds[role_type].option_groups }}"
   register: rds_option_group
 
 - debug:
@@ -115,7 +115,7 @@
     command: create
     db_instance_identifier: "{{ item.value.db_instance_identifier }}"
     engine: "{{ item.value.engine }}"
-    engine_version: "{{ rds[env][role_type].option_groups.major_engine_version }}"
+    engine_version: "{{ rds[role_type].option_groups.major_engine_version }}"
     db_instance_class: "{{ item.value.db_instance_class}}"
     master_username: "{{ item.value.master_username }}"
     master_user_password: "{{ item.value.master_user_password }}"
@@ -133,7 +133,7 @@
     tags: "{{ item.value.tags }}"
     wait: "{{ item.value.wait }}"
     wait_timeout: "{{ item.value.wait_timeout }}"
-  with_dict: "{{ rds[env][role_type].db_instances }}"
+  with_dict: "{{ rds[role_type].db_instances }}"
   register: master_rds_instance
   when: "db_instance_type  == 'master'"
 
@@ -149,39 +149,3 @@
     ttl: 300
     overwrite: yes
     retry_interval: 5
-  when: stage != "delete"
-
-#- name: add the rds endpoint to {{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}
-#  consul_kv:
-#    key: "{{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}/endpoint"
-#    value: "{{ role_type }}-{{ db_instance_type }}.{{env}}.{{ tld_name_internal }}"
-#
-#- name: add the rds port to {{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}
-#  consul_kv:
-#    key: "{{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}/port"
-#    value: "{{master_rds_instance.results[0].rds.DBInstances[0].Endpoint.Port}}"
-
-#- name: Grab the {{role_type}}-{{ db_instance_type }} endpoint
-#  uri:
-#    url: "http://localhost:8500/v1/kv/{{ vpc_name }}/{{ role_type }}/{{role_type}}-{{db_instance_type}}/endpoint?recurse"
-#  register: data
-#
-#- debug: msg="{{data.json[0].Value |b64decode}}"
-
-# - name: Create the {{role_type}}-{{ db_instance_type }} RDS instance
-#   rds_v2:
-#     region: "{{ region }}"
-#     profile: "{{ aws_account_name }}"
-#     command: replicate
-#     source_db_instance_identifier: test-instance
-#     db_instance_identifier: test-instance-read-replica
-#     availability_zone: ap-southeast-2a
-#     db_instance_class: db.t2.medium
-#     option_group_name: test-option-group
-#     tags: "{{ rds[env].db_instances[role_type].replica1.tags }}"
-#     wait: "{{ rds[env].db_instances[role_type].master.wait }}"
-#     wait_timeout: "{{ rds[env].db_instances[role_type].master.wait_timeout }}"
-##   with_items: "{{ rds[env].db_instances[role_type] }}"
-##   when: "{{ item.command == 'replicate' }}"
-##   register: new_rds_replica
-#...
