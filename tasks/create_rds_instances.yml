@@ -108,29 +108,34 @@
   set_fact:
     option_group_name: "{{ rds_option_group.results[0].item.option_group_name }}"
 
-- name: Create the {{role_type}}-{{ db_instance_type }} RDS instance
-  rds_v2:
+- rds_facts:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
-    command: create
-    db_instance_identifier: "{{ item.value.db_instance_identifier }}"
-    engine: "{{ item.value.engine }}"
+    instance_name: "{{ item.value.db_instance_identifier }}"
+  with_dict: "{{ rds[role_type].db_instances }}"
+
+- name: Create the {{role_type}}-{{ db_instance_type }} RDS instance
+  rds_instance:
+    region: "{{ region }}"
+    profile: "{{ aws_account_name }}"
+    instance_name: "{{ item.value.db_instance_identifier }}"
+    db_engine: "{{ item.value.engine }}"
     engine_version: "{{ rds[role_type].option_groups.major_engine_version }}"
-    db_instance_class: "{{ item.value.db_instance_class}}"
-    master_username: "{{ item.value.master_username }}"
-    master_user_password: "{{ item.value.master_user_password }}"
-    allocated_storage: "{{ item.value.allocated_storage }}"
+    instance_type: "{{ item.value.db_instance_class}}"
+    username: "{{ item.value.master_username }}"
+    password: "{{ item.value.master_user_password }}"
+    size: "{{ item.value.allocated_storage }}"
     storage_type: "{{ item.value.storage_type }}"
     # It works but only if we do the whole rebuild of rds for all env to match
     # up the engine version. Commented out for now until we have a chance to
     # rebuild all from scratch to have consistent rds version in engine and
     # param group.
-    #db_parameter_group_name: "{{ db_parameter_group_name  }}"
-    option_group_name: "{{ option_group_name }}"
-    # Must be an array
-    vpc_security_group_ids: "{{ vpc_security_group_ids }}"
-    db_subnet_group_name: "{{ db_subnet_group_name }}"
+    parameter_group: "{{ db_parameter_group_name  }}"
+    option_group: "{{ option_group_name }}"
+    vpc_security_groups: "{{ vpc_security_group_ids }}"
+    subnet: "{{ db_subnet_group_name }}"
     tags: "{{ item.value.tags }}"
+    multi_zone: "{{ item.value.multi_az }}"
     wait: "{{ item.value.wait }}"
     wait_timeout: "{{ item.value.wait_timeout }}"
   with_dict: "{{ rds[role_type].db_instances }}"
@@ -144,7 +149,7 @@
     command: create
     zone: "{{ env }}.{{ tld_name_internal }}"
     record: "{{ role_type }}-{{ db_instance_type }}.{{env}}.{{ tld_name_internal }}"
-    value: "{{master_rds_instance.results[0].rds.DBInstances[0].Endpoint.Address}}"
+    value: "{{ master_rds_instance.instance.endpoint }}"
     type: CNAME
     ttl: 300
     overwrite: yes
