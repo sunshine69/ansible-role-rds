@@ -1,1 +1,2 @@
 stage: create
+db_instance_type: master

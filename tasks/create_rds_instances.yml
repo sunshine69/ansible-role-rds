@@ -41,7 +41,7 @@
 - debug:
     msg: "subnet_groups from variables {{item.value.name}}"
     verbosity: 2
-  with_dict: "{{ rds[role_type].subnet_groups }}"
+  with_dict: "{{ rds.subnet_groups }}"
 # If existing subnet group having different vpc-id then the below will fail
 # with message 'The new Subnets are not in the same Vpc as the existing subnet
 # group'. Reason is aws does not allow to edit/change the vpcid.
@@ -55,7 +55,7 @@
     description: "{{ item.value.description }}"
     subnets: "{{ rds_subnets.subnets | map(attribute='id') |list }}"
     state: present
-  with_dict: "{{ rds[role_type].subnet_groups }}"
+  with_dict: "{{ rds.subnet_groups }}"
   register: rds_subnet_group
 
 - debug:
@@ -73,9 +73,9 @@
     name: "{{ item.value.name }}"
     description: "{{ item.value.description }}"
     params: "{{ item.value.params }}"
-    engine: "{{ rds[role_type].option_groups.engine_name }}{{ rds[role_type].option_groups.major_engine_version }}"
+    engine: "{{ rds.option_groups.engine_name }}{{ rds.option_groups.major_engine_version }}"
     state: present
-  with_dict: "{{ rds[role_type].parameter_groups }}"
+  with_dict: "{{ rds.parameter_groups }}"
   register: rds_param_group
 
 - debug:
@@ -97,7 +97,7 @@
     apply_immediately: "{{ item.apply_immediately }}"
     state: present
   with_items:
-    - "{{ rds[role_type].option_groups }}"
+    - "{{ rds.option_groups }}"
   register: rds_option_group
 
 - debug:
@@ -108,19 +108,20 @@
   set_fact:
     option_group_name: "{{ rds_option_group.results[0].item.option_group_name }}"
 
-- rds_facts:
+- rds_instance_facts:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
-    instance_name: "{{ item.value.db_instance_identifier }}"
-  with_dict: "{{ rds[role_type].db_instances }}"
+    name: "{{ item.value.db_instance_identifier }}"
+  with_dict: "{{ rds.db_instances }}"
 
 - name: Create the {{role_type}}-{{ db_instance_type }} RDS instance
   rds_instance:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
     instance_name: "{{ item.value.db_instance_identifier }}"
+    db_name: "{{ item.value.database|default(omit) }}"
     db_engine: "{{ item.value.engine }}"
-    engine_version: "{{ rds[role_type].option_groups.major_engine_version }}"
+    engine_version: "{{ rds.option_groups.major_engine_version }}"
     instance_type: "{{ item.value.db_instance_class}}"
     username: "{{ item.value.master_username }}"
     password: "{{ item.value.master_user_password }}"
@@ -138,9 +139,14 @@
     multi_zone: "{{ item.value.multi_az }}"
     wait: "{{ item.value.wait }}"
     wait_timeout: "{{ item.value.wait_timeout }}"
-  with_dict: "{{ rds[role_type].db_instances }}"
+    force_password_update: no
+  with_dict: "{{ rds.db_instances }}"
   register: master_rds_instance
   when: "db_instance_type  == 'master'"
+
+- debug:
+    var: master_rds_instance
+    verbosity: 2
 
 - name: Create Route 53 internal rds master record entry for {{role_type}}
   route53:
@@ -149,8 +155,9 @@
     command: create
     zone: "{{ env }}.{{ tld_name_internal }}"
     record: "{{ role_type }}-{{ db_instance_type }}.{{env}}.{{ tld_name_internal }}"
-    value: "{{ master_rds_instance.instance.endpoint }}"
+    value: "{{ item.instance.endpoint }}"
     type: CNAME
     ttl: 300
     overwrite: yes
     retry_interval: 5
+  with_items: "{{ master_rds_instance.results }}"
