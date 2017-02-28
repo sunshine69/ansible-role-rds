@@ -6,7 +6,8 @@
     profile: "{{ aws_account_name }}"
     filters:
       "tag:Environment": "{{env}}"
-      "tag:Role": "{{role_type}}_rds"
+      "tag:Role": "{{role_type}}"
+      "tag:Service": rds
   register: rds_subnets
 
 - debug:
@@ -19,7 +20,7 @@
     profile: "{{ aws_account_name }}"
     filters:
       "tag:Environment": "{{env}}"
-      "tag:Role": "{{role_type}}_rds"
+      "tag:Role": "{{role_type}}"
       "tag:Name" : "xvt-{{vpc_name}}-sg-{{role_type}}-rds"
   register: rds_security_groups
 
