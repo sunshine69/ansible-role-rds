@@ -5,8 +5,8 @@
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
     filters:
-      "tag:Environment": "{{env}}"
-      "tag:Role": "{{role_type}}"
+      "tag:Environment": "{{ env }}"
+      "tag:Role": "{{ role_type }}"
       "tag:Service": rds
   register: rds_subnets
 
@@ -19,17 +19,14 @@
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
     filters:
-      "tag:Environment": "{{env}}"
-      "tag:Role": "{{role_type}}"
-      "tag:Name" : "xvt-{{vpc_name}}-sg-{{role_type}}-rds"
+      "tag:Environment": "{{ env }}"
+      "tag:Role": "{{ role_type }}"
+      "tag:Service": rds
+      "tag:Name" : "xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
   register: rds_security_groups
 
 - fail: msg="Not found any security group xvt-{{vpc_name}}-sg-{{role_type}}-rds"
   when: rds_security_groups.groups|length == 0
-
-- debug:
-    msg: "{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
-    verbosity: 2
 
 - name: set the security group list fact
   set_fact:
@@ -43,6 +40,7 @@
     msg: "subnet_groups from variables {{item.value.name}}"
     verbosity: 2
   with_dict: "{{ rds.subnet_groups }}"
+
 # If existing subnet group having different vpc-id then the below will fail
 # with message 'The new Subnets are not in the same Vpc as the existing subnet
 # group'. Reason is aws does not allow to edit/change the vpcid.
