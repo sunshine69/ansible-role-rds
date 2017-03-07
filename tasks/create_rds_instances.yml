@@ -138,7 +138,7 @@
     multi_zone: "{{ item.value.multi_az }}"
     wait: "{{ item.value.wait }}"
     wait_timeout: "{{ item.value.wait_timeout }}"
-    force_password_update: no
+    force_password_update: "{{force_password_update|default('no')}}"
   with_dict: "{{ rds.db_instances }}"
   register: master_rds_instance
   when: "db_instance_type  == 'master'"
