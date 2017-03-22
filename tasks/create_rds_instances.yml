@@ -1,6 +1,6 @@
 ---
 
-- name: Gather facts about the {{role_type}} RDS Subnets in {{env}}
+- name: Gather facts about the {{ role_type }} RDS Subnets in {{ env }}
   ec2_vpc_subnet_facts:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
@@ -14,7 +14,7 @@
     var: rds_subnets
     verbosity: 2
 
-- name: Gather facts about the {{role_type}} RDS Security Groups in {{env}}
+- name: Gather facts about the {{ role_type }} RDS Security Groups in {{ env }}
   ec2_group_facts:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
@@ -25,19 +25,19 @@
       "tag:Name" : "xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
   register: rds_security_groups
 
-- fail: msg="Not found any security group xvt-{{vpc_name}}-sg-{{role_type}}-rds"
+- fail: msg="Not found any security group xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
   when: rds_security_groups.groups|length == 0
 
 - name: set the security group list fact
   set_fact:
-    vpc_security_group_ids: "{{rds_security_groups.groups | map(attribute='GroupId') | list}}"
+    vpc_security_group_ids: "{{ rds_security_groups.groups | map(attribute='GroupId') | list }}"
 
 - debug:
-    msg: "List of rds_security_groups found {{ vpc_security_group_ids}}"
+    msg: "List of rds_security_groups found {{ vpc_security_group_ids }}"
     verbosity: 2
 
 - debug:
-    msg: "subnet_groups from variables {{item.value.name}}"
+    msg: "subnet_groups from variables {{ item.value.name }}"
     verbosity: 2
   with_dict: "{{ rds.subnet_groups }}"
 
@@ -58,16 +58,16 @@
   register: rds_subnet_group
 
 - debug:
-    msg: "{{rds_subnet_group.results[0].item.value.name}}"
+    msg: "{{ rds_subnet_group.results[0].item.value.name }}"
     verbosity: 2
 
 - name: set the db_subnet_group_name fact
   set_fact:
-    db_subnet_group_name: "{{rds_subnet_group.results[0].item.value.name}}"
+    db_subnet_group_name: "{{ rds_subnet_group.results[0].item.value.name }}"
 
 - name: create the parameter_group
   rds_param_group:
-    region: "{{region}}"
+    region: "{{ region }}"
     profile: "{{ aws_account_name }}"
     name: "{{ item.value.name }}"
     description: "{{ item.value.description }}"
@@ -78,12 +78,12 @@
   register: rds_param_group
 
 - debug:
-    msg: "{{rds_param_group.results[0].item.value.name}}"
+    msg: "{{ rds_param_group.results[0].item.value.name }}"
     verbosity: 2
 
 - name: set the parameter_group_name fact
   set_fact:
-    db_parameter_group_name: "{{rds_param_group.results[0].item.value.name}}"
+    db_parameter_group_name: "{{ rds_param_group.results[0].item.value.name }}"
 
 - name: create the option_group_name
   rds_option_group:
@@ -100,7 +100,7 @@
   register: rds_option_group
 
 - debug:
-    msg: "{{rds_option_group.results[0].item.option_group_name}}"
+    msg: "{{ rds_option_group.results[0].item.option_group_name }}"
     verbosity: 2
 
 - name: set the option_group_name fact
@@ -113,7 +113,7 @@
     name: "{{ item.value.db_instance_identifier }}"
   with_dict: "{{ rds.db_instances }}"
 
-- name: Create the {{role_type}}-{{ db_instance_type }} RDS instance
+- name: Create the {{ role_type }}-{{ db_instance_type }} RDS instance
   rds_instance:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
@@ -121,7 +121,7 @@
     db_name: "{{ item.value.database|default(omit) }}"
     db_engine: "{{ item.value.engine }}"
     engine_version: "{{ rds.option_groups.major_engine_version }}"
-    instance_type: "{{ item.value.db_instance_class}}"
+    instance_type: "{{ item.value.db_instance_class }}"
     username: "{{ item.value.master_username }}"
     password: "{{ item.value.master_user_password }}"
     size: "{{ item.value.allocated_storage }}"
@@ -138,7 +138,7 @@
     multi_zone: "{{ item.value.multi_az }}"
     wait: "{{ item.value.wait }}"
     wait_timeout: "{{ item.value.wait_timeout }}"
-    force_password_update: "{{force_password_update|default('no')}}"
+    force_password_update: "{{ force_password_update|default('no') }}"
   with_dict: "{{ rds.db_instances }}"
   register: master_rds_instance
   when: "db_instance_type  == 'master'"
@@ -147,13 +147,13 @@
     var: master_rds_instance
     verbosity: 2
 
-- name: Create Route 53 internal rds master record entry for {{role_type}}
+- name: Create Route 53 internal rds master record entry for {{ role_type }}
   route53:
     profile: "{{ aws_account_name }}"
     private_zone: true
     command: create
     zone: "{{ env }}.{{ tld_name_internal }}"
-    record: "{{ role_type }}-{{ db_instance_type }}.{{env}}.{{ tld_name_internal }}"
+    record: "{{ role_type }}-{{ db_instance_type }}.{{ env }}.{{ tld_name_internal }}"
     value: "{{ item.instance.endpoint }}"
     type: CNAME
     ttl: 300
