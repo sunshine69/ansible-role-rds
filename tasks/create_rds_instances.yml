@@ -122,7 +122,7 @@
     db_engine: "{{ item.value.engine }}"
     engine_version: "{{ rds.option_groups.major_engine_version }}"
     instance_type: "{{ item.value.db_instance_class }}"
-    username: "{{ item.value.master_username }}"
+    username: "{{ item.value.master_user_name }}"
     password: "{{ item.value.master_user_password }}"
     size: "{{ item.value.allocated_storage }}"
     storage_type: "{{ item.value.storage_type }}"
