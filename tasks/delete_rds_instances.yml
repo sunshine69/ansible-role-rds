@@ -8,3 +8,11 @@
     state: absent
   with_dict: "{{ rds.db_instances }}"
   when: "db_instance_type  == 'master'"
+
+- name: Remove the rds_subnet_group
+  rds_subnet_group:
+    region: "{{ region }}"
+    profile: "{{ aws_account_name }}"
+    name: "{{ item.value.name }}"
+    state: absent
+  with_dict: "{{ rds.subnet_groups }}"
