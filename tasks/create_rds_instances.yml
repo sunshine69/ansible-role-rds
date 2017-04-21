@@ -26,11 +26,11 @@
   register: rds_security_groups
 
 - fail: msg="Not found any security group xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
-  when: rds_security_groups.groups|length == 0
+  when: not rds_security_groups.security_groups
 
 - name: set the security group list fact
   set_fact:
-    vpc_security_group_ids: "{{ rds_security_groups.groups | map(attribute='GroupId') | list }}"
+    vpc_security_group_ids: "{{ rds_security_groups | json_query('security_groups[].group_id') }}"
 
 - debug:
     msg: "List of rds_security_groups found {{ vpc_security_group_ids }}"
