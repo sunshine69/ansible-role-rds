@@ -16,7 +16,8 @@
     option_group_name: "{{ item.option_group_name }}"
     apply_immediately: "{{ item.apply_immediately }}"
     state: absent
-  with_items: "{{ rds.option_groups }}"
+  with_items:
+    - "{{ rds.option_groups }}"
 
 - name: Remove the rds_subnet_group
   rds_subnet_group:
