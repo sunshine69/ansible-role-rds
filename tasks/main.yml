@@ -1,1 +1,2 @@
 - include: "{{ stage }}_rds_instances.yml"
+  when: rds.deployment == 'present'
