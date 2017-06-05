@@ -74,6 +74,7 @@
     params: "{{ item.value.params }}"
     engine: "{{ rds.option_groups.engine_name }}{{ rds.option_groups.major_engine_version }}"
     state: present
+    immediate: "{{ item.value.apply_immediately }}"
   with_dict: "{{ rds.parameter_groups }}"
   register: rds_param_group
 
