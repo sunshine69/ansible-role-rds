@@ -75,6 +75,10 @@
     engine: "{{ rds.option_groups.engine_name }}{{ rds.option_groups.major_engine_version }}"
     state: present
     immediate: "{{ item.value.apply_immediately }}"
+    tags:
+      Environment: "{{ env }}"
+      Tier: rds
+      Application: "{{ role_type }}"
   with_dict: "{{ rds.parameter_groups }}"
   register: rds_param_group
 
