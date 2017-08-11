@@ -69,7 +69,7 @@
   rds_param_group:
     region: "{{ region }}"
     profile: "{{ aws_account_name }}"
-    name: "{{ item.value.name }}"
+    name: "{{ rds_param_group_name }}"
     description: "{{ item.value.description }}"
     params: "{{ item.value.params }}"
     engine: "{{ rds.option_groups.engine_name }}{{ rds.option_groups.major_engine_version }}"
