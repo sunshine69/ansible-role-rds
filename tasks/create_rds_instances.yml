@@ -3,7 +3,7 @@
 - name: Gather facts about the {{ role_type }} RDS Subnets in {{ env }}
   ec2_vpc_subnet_facts:
     region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     filters:
       "tag:Environment": "{{ env }}"
       "tag:Application": "{{ role_type }}"
@@ -17,7 +17,7 @@
 - name: Gather facts about the {{ role_type }} RDS Security Groups in {{ env }}
   ec2_group_facts:
     region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     filters:
       "tag:Environment": "{{ env }}"
       "tag:Application": "{{ role_type }}"
@@ -49,7 +49,7 @@
 - name: create the rds_subnet_group
   rds_subnet_group:
     region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     name: "{{ item.value.name }}"
     description: "{{ item.value.description }}"
     subnets: "{{ rds_subnets.subnets | map(attribute='id') |list }}"
@@ -68,7 +68,7 @@
 - name: create the parameter_group
   rds_param_group:
     region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     name: "{{ rds_param_group_name }}"
     description: "{{ item.value.description }}"
     params: "{{ item.value.params }}"
@@ -93,7 +93,7 @@
 - name: create the option_group_name
   rds_option_group:
     region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     option_group_name: "{{ item.option_group_name }}"
     engine_name: "{{ item.engine_name }}"
     major_engine_version: "{{ item.major_engine_version }}"
@@ -114,14 +114,14 @@
 
 - rds_instance_facts:
     region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     name: "{{ item.value.db_instance_identifier }}"
   with_dict: "{{ rds.db_instances }}"
 
 - name: Create the {{ role_type }}-{{ db_instance_type }} RDS instance
   rds_instance:
     region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     instance_name: "{{ item.value.db_instance_identifier }}"
     db_name: "{{ item.value.database|default(omit) }}"
     db_engine: "{{ item.value.engine }}"
@@ -154,7 +154,7 @@
 
 - name: Create Route 53 internal rds master record entry for {{ role_type }}
   route53:
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     private_zone: true
     command: create
     zone: "{{ env }}.{{ tld_name_internal }}"

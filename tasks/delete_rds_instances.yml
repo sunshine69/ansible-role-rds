@@ -1,7 +1,7 @@
 - name: Remove the {{ role_type }}-{{ db_instance_type }} RDS instance
   rds_instance:
     region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     instance_name: "{{ item.value.db_instance_identifier }}"
     wait: "{{ item.value.wait }}"
     wait_timeout: "{{ item.value.wait_timeout }}"
@@ -12,7 +12,7 @@
 #- name: remove the option groups
 #  rds_option_group:
 #    region: "{{ region }}"
-#    profile: "{{ aws_account_name }}"
+#    profile: "{{ profile|default(omit) }}"
 #    option_group_name: "{{ item.option_group_name }}"
 #    apply_immediately: "{{ item.apply_immediately }}"
 #    state: absent
@@ -22,7 +22,7 @@
 - name: Remove the rds_subnet_group
   rds_subnet_group:
     region: "{{ region }}"
-    profile: "{{ aws_account_name }}"
+    profile: "{{ profile|default(omit) }}"
     name: "{{ item.value.name }}"
     state: absent
   with_dict: "{{ rds.subnet_groups }}"
