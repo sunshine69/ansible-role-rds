@@ -1,1 +1,1 @@
-- include: "{{ stage }}_rds_instances.yml"
+- include_tasks: "{{ stage }}_rds_instances.yml"
