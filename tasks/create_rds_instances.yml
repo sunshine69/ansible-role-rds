@@ -122,25 +122,25 @@
   rds_instance:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
-    instance_name: "{{ item.value.db_instance_identifier }}"
+    db_instance_identifier: "{{ item.value.db_instance_identifier }}"
     db_name: "{{ item.value.database|default(omit) }}"
-    db_engine: "{{ item.value.engine }}"
+    engine: "{{ item.value.engine }}"
     engine_version: "{{ rds.option_groups.major_engine_version }}"
-    instance_type: "{{ item.value.db_instance_class }}"
-    username: "{{ item.value.master_user_name }}"
-    password: "{{ item.value.master_user_password }}"
+    db_instance_class: "{{ item.value.db_instance_class }}"
+    master_username: "{{ item.value.master_user_name }}"
+    master_user_password: "{{ item.value.master_user_password }}"
     size: "{{ item.value.allocated_storage }}"
     storage_type: "{{ item.value.storage_type }}"
     # It works but only if we do the whole rebuild of rds for all env to match
     # up the engine version. Commented out for now until we have a chance to
     # rebuild all from scratch to have consistent rds version in engine and
     # param group.
-    parameter_group: "{{ db_parameter_group_name  }}"
-    option_group: "{{ option_group_name }}"
-    vpc_security_groups: "{{ vpc_security_group_ids }}"
+    db_parameter_group_name: "{{ db_parameter_group_name  }}"
+    option_group_name: "{{ option_group_name }}"
+    vpc_security_group_ids: "{{ vpc_security_group_ids }}"
     subnet: "{{ db_subnet_group_name }}"
     tags: "{{ item.value.tags }}"
-    multi_zone: "{{ item.value.multi_az }}"
+    multi_az: "{{ item.value.multi_az }}"
     wait: "{{ item.value.wait }}"
     wait_timeout: "{{ item.value.wait_timeout }}"
     force_password_update: "{{ force_password_update|default('no') }}"
@@ -159,7 +159,7 @@
     command: create
     zone: "{{ env }}.{{ tld_name_internal }}"
     record: "{{ role_type }}-{{ db_instance_type }}.{{ env }}.{{ tld_name_internal }}"
-    value: "{{ item.instance.endpoint }}"
+    value: "{{ item.instance.endpoint.address }}"
     type: CNAME
     ttl: 300
     overwrite: yes
