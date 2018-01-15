@@ -82,14 +82,6 @@
   with_dict: "{{ rds.parameter_groups }}"
   register: rds_param_group
 
-- debug:
-    msg: "{{ rds_param_group.results[0].item.value.name }}"
-    verbosity: 2
-
-- name: set the parameter_group_name fact
-  set_fact:
-    db_parameter_group_name: "{{ rds_param_group.results[0].item.value.name }}"
-
 - name: create the option_group_name
   rds_option_group:
     region: "{{ region }}"
@@ -135,7 +127,7 @@
     # up the engine version. Commented out for now until we have a chance to
     # rebuild all from scratch to have consistent rds version in engine and
     # param group.
-    db_parameter_group_name: "{{ db_parameter_group_name  }}"
+    db_parameter_group_name: "{{ rds_param_group_name }}"
     option_group_name: "{{ option_group_name }}"
     vpc_security_group_ids: "{{ vpc_security_group_ids }}"
     subnet: "{{ db_subnet_group_name }}"
