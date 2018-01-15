@@ -1,2 +1,1 @@
----
-# tasks file for rds
+- include_tasks: "{{ stage }}_rds_instances.yml"

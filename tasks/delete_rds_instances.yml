@@ -1,0 +1,42 @@
+- name: Remove the {{ role_type }}-{{ db_instance_type }} RDS instance
+  rds_instance:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    db_instance_identifier: "{{ item.value.db_instance_identifier }}"
+    wait: "{{ item.value.wait }}"
+    wait_timeout: "{{ item.value.wait_timeout }}"
+    state: absent
+  with_dict: "{{ rds.db_instances }}"
+  when: "db_instance_type  == 'master'"
+
+- name: Identify snapshots to remove
+  rds_snapshot_facts:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+
+- name: remove the option groups
+  rds_option_group:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    option_group_name: "{{ item.option_group_name }}"
+    apply_immediately: "{{ item.apply_immediately }}"
+    state: absent
+  with_items:
+    - "{{ rds.option_groups }}"
+
+- name: remove the parameter groups
+  rds_param_group:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    name: "{{ rds_param_group_name }}"
+    state: absent
+  with_items:
+    - "{{ rds.parameter_groups }}"
+
+- name: Remove the rds_subnet_group
+  rds_subnet_group:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    name: "{{ item.value.name }}"
+    state: absent
+  with_dict: "{{ rds.subnet_groups }}"

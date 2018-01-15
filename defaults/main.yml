@@ -1,2 +1,2 @@
----
-# defaults file for rds
+stage: create
+db_instance_type: master
