@@ -44,6 +44,7 @@ Role Variables
     - `wait` (boolean) - whether to wait until the DB is available before continuining
     - `wait_timeout` (int) - number of seconds to wait
     - `tags` (dict) - dict of tag keys and values
+    - `license_model` (string) - license model to use (defaults to AWS default)
 
 * `rds_force_password_update` (boolean) - whether to force the update of the DB password. This
   defaults to `False`, and is typically passed on the command line when you know you need to change
@@ -65,3 +66,9 @@ XVT internal use
 
 Author Information
 ------------------
+
+CHANGELOG
+---------
+
+* v1.0 - massive rewrite and documentation of variables. All consuming playbooks will need to be
+  rewritten to take the changes into account

@@ -102,6 +102,7 @@
     wait: "{{ item.wait }}"
     wait_timeout: "{{ item.wait_timeout }}"
     force_password_update: "{{ rds_force_password_update|default('no') }}"
+    license_model: "{{ item.license_model|default(omit) }}"
   with_items: "{{ rds_db_instances }}"
   register: master_rds_instance
   when: "db_instance_type  == 'master'"
