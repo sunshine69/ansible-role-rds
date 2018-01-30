@@ -1,5 +1,3 @@
----
-
 - name: Gather facts about the {{ role_type }} RDS Subnets in {{ env }}
   ec2_vpc_subnet_facts:
     region: "{{ region }}"
@@ -25,7 +23,8 @@
       "tag:Name" : "xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
   register: rds_security_groups
 
-- fail: msg="Not found any security group xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
+- fail:
+    msg: "Not found any security group xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
   when: not rds_security_groups.security_groups
 
 - name: set the security group list fact
@@ -36,11 +35,6 @@
     msg: "List of rds_security_groups found {{ vpc_security_group_ids }}"
     verbosity: 2
 
-- debug:
-    msg: "subnet_groups from variables {{ item.value.name }}"
-    verbosity: 2
-  with_dict: "{{ rds.subnet_groups }}"
-
 # If existing subnet group having different vpc-id then the below will fail
 # with message 'The new Subnets are not in the same Vpc as the existing subnet
 # group'. Reason is aws does not allow to edit/change the vpcid.
@@ -50,107 +44,67 @@
   rds_subnet_group:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
-    name: "{{ item.value.name }}"
-    description: "{{ item.value.description }}"
+    name: "{{ rds_subnet_group.name }}"
+    description: "{{ rds_subnet_group.description }}"
     subnets: "{{ rds_subnets.subnets | map(attribute='id') |list }}"
     state: present
-  with_dict: "{{ rds.subnet_groups }}"
-  register: rds_subnet_group
-
-- debug:
-    msg: "{{ rds_subnet_group.results[0].item.value.name }}"
-    verbosity: 2
-
-- name: set the db_subnet_group_name fact
-  set_fact:
-    db_subnet_group_name: "{{ rds_subnet_group.results[0].item.value.name }}"
 
 - name: create the parameter_group
   rds_param_group:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
-    name: "{{ rds_param_group_name }}"
-    description: "{{ item.value.description }}"
-    params: "{{ item.value.params }}"
-    engine: "{{ rds.option_groups.engine_name }}{{ rds.option_groups.major_engine_version }}"
+    name: "{{ rds_parameter_group.name }}"
+    description: "{{ rds_parameter_group.description }}"
+    params: "{{ rds_parameter_group.params }}"
+    engine: "{{ rds_option_group.engine_name }}{{ rds_option_group.major_engine_version }}"
     state: present
-    immediate: "{{ item.value.apply_immediately }}"
+    immediate: "{{ rds_parameter_group.apply_immediately }}"
     tags:
       Environment: "{{ env }}"
       Tier: rds
       Application: "{{ role_type }}"
-  with_dict: "{{ rds.parameter_groups }}"
   register: rds_param_group
-
-- debug:
-    msg: "{{ rds_param_group.results[0].item.value.name }}"
-    verbosity: 2
-
-- name: set the parameter_group_name fact
-  set_fact:
-    db_parameter_group_name: "{{ rds_param_group.results[0].item.value.name }}"
 
 - name: create the option_group_name
   rds_option_group:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
-    option_group_name: "{{ item.option_group_name }}"
-    engine_name: "{{ item.engine_name }}"
-    major_engine_version: "{{ item.major_engine_version }}"
-    option_group_description: "{{ item.option_group_description }}"
-    apply_immediately: "{{ item.apply_immediately }}"
+    option_group_name: "{{ rds_option_group.name }}"
+    engine_name: "{{ rds_option_group.engine_name }}"
+    major_engine_version: "{{ rds_option_group.major_engine_version }}"
+    option_group_description: "{{ rds_option_group.description }}"
+    apply_immediately: "{{ rds_option_group.apply_immediately }}"
     state: present
-  with_items:
-    - "{{ rds.option_groups }}"
-  register: rds_option_group
-
-- debug:
-    msg: "{{ rds_option_group.results[0].item.option_group_name }}"
-    verbosity: 2
-
-- name: set the option_group_name fact
-  set_fact:
-    option_group_name: "{{ rds_option_group.results[0].item.option_group_name }}"
-
-- rds_instance_facts:
-    region: "{{ region }}"
-    profile: "{{ profile|default(omit) }}"
-    name: "{{ item.value.db_instance_identifier }}"
-  with_dict: "{{ rds.db_instances }}"
 
 - name: Create the {{ role_type }}-{{ db_instance_type }} RDS instance
   rds_instance:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
-    db_instance_identifier: "{{ item.value.db_instance_identifier }}"
-    db_name: "{{ item.value.database|default(omit) }}"
-    engine: "{{ item.value.engine }}"
-    engine_version: "{{ rds.option_groups.major_engine_version }}"
-    db_instance_class: "{{ item.value.db_instance_class }}"
-    master_username: "{{ item.value.master_user_name }}"
-    master_user_password: "{{ item.value.master_user_password }}"
-    size: "{{ item.value.allocated_storage }}"
-    storage_type: "{{ item.value.storage_type }}"
+    db_instance_identifier: "{{ item.db_instance_identifier }}"
+    db_name: "{{ item.database|default(omit) }}"
+    engine: "{{ item.engine }}"
+    engine_version: "{{ rds_option_group.major_engine_version }}"
+    db_instance_class: "{{ item.db_instance_class }}"
+    master_username: "{{ item.master_user_name }}"
+    master_user_password: "{{ item.master_user_password }}"
+    size: "{{ item.allocated_storage }}"
+    storage_type: "{{ item.storage_type }}"
     # It works but only if we do the whole rebuild of rds for all env to match
     # up the engine version. Commented out for now until we have a chance to
     # rebuild all from scratch to have consistent rds version in engine and
     # param group.
-    db_parameter_group_name: "{{ db_parameter_group_name  }}"
-    option_group_name: "{{ option_group_name }}"
+    db_parameter_group_name: "{{ rds_parameter_group.name  }}"
+    option_group_name: "{{ rds_option_group.name }}"
     vpc_security_group_ids: "{{ vpc_security_group_ids }}"
-    subnet: "{{ db_subnet_group_name }}"
-    tags: "{{ item.value.tags }}"
-    multi_az: "{{ item.value.multi_az }}"
-    wait: "{{ item.value.wait }}"
-    wait_timeout: "{{ item.value.wait_timeout }}"
-    force_password_update: "{{ force_password_update|default('no') }}"
-  with_dict: "{{ rds.db_instances }}"
+    subnet: "{{ rds_subnet_group.name }}"
+    tags: "{{ item.tags }}"
+    multi_az: "{{ item.multi_az }}"
+    wait: "{{ item.wait }}"
+    wait_timeout: "{{ item.wait_timeout }}"
+    force_password_update: "{{ rds_force_password_update|default('no') }}"
+  with_items: "{{ rds_db_instances }}"
   register: master_rds_instance
   when: "db_instance_type  == 'master'"
-
-- debug:
-    var: master_rds_instance
-    verbosity: 2
 
 - name: Create Route 53 internal rds master record entry for {{ role_type }}
   route53:
@@ -164,4 +118,4 @@
     ttl: 300
     overwrite: yes
     retry_interval: 5
-  with_items: "{{ master_rds_instance.results }}"
+  with_items: "{{ master_rds_instance.results|default([]) }}"
