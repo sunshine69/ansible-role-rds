@@ -56,7 +56,7 @@
     name: "{{ rds_parameter_group.name }}"
     description: "{{ rds_parameter_group.description }}"
     params: "{{ rds_parameter_group.params }}"
-    engine: "{{ rds_option_group.engine_name }}{{ rds_option_group.major_engine_version }}"
+    engine: "{{ rds_parameter_groups_engine|default(rds_option_group.engine_name + rds_option_group.major_engine_version) }}"
     state: present
     immediate: "{{ rds_parameter_group.apply_immediately }}"
     tags:
