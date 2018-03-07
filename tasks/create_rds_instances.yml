@@ -56,7 +56,7 @@
     name: "{{ rds_parameter_group.name }}"
     description: "{{ rds_parameter_group.description }}"
     params: "{{ rds_parameter_group.params }}"
-    engine: "{{ rds_option_group.engine_name }}{{ rds_option_group.major_engine_version }}"
+    engine: "{{ rds_parameter_groups_engine|default(rds_option_group.engine_name + rds_option_group.major_engine_version) }}"
     state: present
     immediate: "{{ rds_parameter_group.apply_immediately }}"
     tags:
@@ -107,13 +107,18 @@
   register: master_rds_instance
   when: "db_instance_type  == 'master'"
 
+- name: Set fact rds_internal_dns
+  set_fact:
+    rds_internal_dns: "{{ role_type }}-{{ db_instance_type }}.{{ env }}.{{ tld_name_internal }}"
+  when: rds_internal_dns is not defined or not rds_internal_dns
+
 - name: Create Route 53 internal rds master record entry for {{ role_type }}
   route53:
     profile: "{{ profile|default(omit) }}"
     private_zone: true
     command: create
     zone: "{{ env }}.{{ tld_name_internal }}"
-    record: "{{ role_type }}-{{ db_instance_type }}.{{ env }}.{{ tld_name_internal }}"
+    record: "{{ rds_internal_dns }}"
     value: "{{ item.instance.endpoint.address }}"
     type: CNAME
     ttl: 300
