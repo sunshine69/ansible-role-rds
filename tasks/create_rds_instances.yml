@@ -1,10 +1,10 @@
-- name: Gather facts about the {{ role_type }} RDS Subnets in {{ env }}
+- name: Gather facts about the {{ rds_application }} RDS Subnets in {{ env }}
   ec2_vpc_subnet_facts:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
     filters:
       "tag:Environment": "{{ env }}"
-      "tag:Application": "{{ role_type }}"
+      "tag:Application": "{{ rds_application }}"
       "tag:Tier": rds
   register: rds_subnets
 
@@ -12,19 +12,19 @@
     var: rds_subnets
     verbosity: 2
 
-- name: Gather facts about the {{ role_type }} RDS Security Groups in {{ env }}
+- name: Gather facts about the {{ rds_application }} RDS Security Groups in {{ env }}
   ec2_group_facts:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
     filters:
       "tag:Environment": "{{ env }}"
-      "tag:Application": "{{ role_type }}"
+      "tag:Application": "{{ rds_application }}"
       "tag:Tier": rds
-      "tag:Name" : "xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
+      "tag:Name" : "xvt-{{ vpc_name }}-sg-{{ rds_application }}-rds"
   register: rds_security_groups
 
 - fail:
-    msg: "Not found any security group xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
+    msg: "Not found any security group xvt-{{ vpc_name }}-sg-{{ rds_application }}-rds"
   when: not rds_security_groups.security_groups
 
 - name: set the security group list fact
@@ -62,7 +62,7 @@
     tags:
       Environment: "{{ env }}"
       Tier: rds
-      Application: "{{ role_type }}"
+      Application: "{{ rds_application }}"
   register: rds_param_group
 
 - name: create the option_group_name
@@ -76,7 +76,7 @@
     apply_immediately: "{{ rds_option_group.apply_immediately }}"
     state: present
 
-- name: Create the {{ role_type }}-{{ db_instance_type }} RDS instance
+- name: Create the {{ rds_application }}-{{ db_instance_type }} RDS instance
   rds_instance:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
@@ -109,10 +109,10 @@
 
 - name: Set fact rds_internal_dns
   set_fact:
-    rds_internal_dns: "{{ role_type }}-{{ db_instance_type }}.{{ env }}.{{ tld_name_internal }}"
+    rds_internal_dns: "{{ rds_application }}-{{ db_instance_type }}.{{ env }}.{{ tld_name_internal }}"
   when: rds_internal_dns is not defined or not rds_internal_dns
 
-- name: Create Route 53 internal rds master record entry for {{ role_type }}
+- name: Create Route 53 internal rds master record entry for {{ rds_application }}
   route53:
     profile: "{{ profile|default(omit) }}"
     private_zone: true
