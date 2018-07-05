@@ -120,7 +120,7 @@
     profile: "{{ profile|default(omit) }}"
     private_zone: true
     command: create
-    zone: "{{ env }}.{{ tld_name_internal }}"
+    zone: "{{ tld_name_internal }}"
     record: "{{ rds_internal_dns }}"
     value: "{{ item.instance.endpoint.address }}"
     type: CNAME
