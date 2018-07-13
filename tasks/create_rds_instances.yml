@@ -20,7 +20,8 @@
       "tag:Environment": "{{ env }}"
       "tag:Application": "{{ role_type }}"
       "tag:Tier": rds
-      "tag:Name" : "xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
+      "tag:Engine" : "{{ rds_option_group.engine_name|default(rds_engine) }}"
+      "tag:Public": "{{ rds_is_public|default('*')|string }}"
   register: rds_security_groups
 
 - fail:
@@ -120,7 +121,7 @@
     profile: "{{ profile|default(omit) }}"
     private_zone: true
     command: create
-    zone: "{{ env }}.{{ tld_name_internal }}"
+    zone: "{{ tld_name_internal }}"
     record: "{{ rds_internal_dns }}"
     value: "{{ item.instance.endpoint.address }}"
     type: CNAME
