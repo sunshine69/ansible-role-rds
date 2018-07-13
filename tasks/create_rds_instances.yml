@@ -20,7 +20,8 @@
       "tag:Environment": "{{ env }}"
       "tag:Application": "{{ role_type }}"
       "tag:Tier": rds
-      "tag:Name" : "xvt-{{ vpc_name }}-sg-{{ role_type }}-rds"
+      "tag:Engine" : "{{ rds_parameter_groups_engine|default(rds_option_group.engine_name) }}"
+      "tag: Public": "{{ rds_is_public|default('*') }}"
   register: rds_security_groups
 
 - fail:
