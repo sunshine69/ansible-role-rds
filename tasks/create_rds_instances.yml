@@ -50,6 +50,10 @@
     subnets: "{{ rds_subnets.subnets | map(attribute='id') |list }}"
     state: present
 
+- debug:
+    var: rds_parameter_group
+    verbosity: 2
+
 - name: create the parameter_group
   rds_param_group:
     region: "{{ region }}"
@@ -66,6 +70,10 @@
       Application: "{{ role_type }}"
   register: rds_param_group
 
+- debug:
+    var: rds_option_group
+    verbosity: 2
+
 - name: create the option_group_name
   rds_option_group:
     region: "{{ region }}"
@@ -76,6 +84,10 @@
     option_group_description: "{{ rds_option_group.description }}"
     apply_immediately: "{{ rds_option_group.apply_immediately }}"
     state: present
+
+- debug:
+    var: rds_db_instances
+    verbosity: 2
 
 - name: Create the {{ role_type }}-{{ db_instance_type }} RDS instance
   rds_instance:
@@ -115,6 +127,10 @@
   set_fact:
     rds_internal_dns: "{{ role_type }}-{{ db_instance_type }}.{{ env }}.{{ tld_name_internal }}"
   when: rds_internal_dns is not defined or not rds_internal_dns
+
+- debug:
+    var: rds_internal_dns
+    verbosity: 2
 
 - name: Create Route 53 internal rds master record entry for {{ role_type }}
   route53:
