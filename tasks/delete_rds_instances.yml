@@ -54,6 +54,26 @@
     state: absent
   ignore_errors: yes
 
+- name: Get the hosted zone infor
+  route53_facts:
+    dns_name: "{{ tld_name_internal }}"
+    query: hosted_zone
+    hosted_zone_method: list_by_name
+    profile: "{{ profile|default(omit) }}"
+  register: hosted_zone_out
+
+- set_fact:
+    hosted_zone_id: "{{ hosted_zone_out.HostedZones.0.Id.split('/')[2] }}"
+
+- name: Get the record set info
+  route53_facts:
+    profile: "{{ profile|default(omit) }}"
+    query: record_sets
+    hosted_zone_id: "{{ hosted_zone_id }}"
+    start_record_name: "{{ rds_internal_dns }}"
+    max_items: 1
+  register: record_set_out
+
 - name: Remove Route 53 internal rds master record entry for {{ role_type }}
   route53:
     profile: "{{ profile|default(omit) }}"
@@ -61,7 +81,6 @@
     state: absent
     zone: "{{ tld_name_internal }}"
     record: "{{ rds_internal_dns }}"
-    value: "{{ item.endpoint.address }}"
-    type: CNAME
+    value: "{{ record_set_out.ResourceRecordSets.0.ResourceRecords.0.Value }}"
     retry_interval: 5
   with_items: "{{ rds_facts.results.0.instances }}"
