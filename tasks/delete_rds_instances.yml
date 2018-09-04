@@ -82,5 +82,6 @@
     zone: "{{ tld_name_internal }}"
     record: "{{ rds_internal_dns }}"
     value: "{{ record_set_out.ResourceRecordSets.0.ResourceRecords.0.Value }}"
+    type: "{{ record_set_out.ResourceRecordSets.0.Type }}"
     retry_interval: 5
   with_items: "{{ rds_facts.results.0.instances }}"
