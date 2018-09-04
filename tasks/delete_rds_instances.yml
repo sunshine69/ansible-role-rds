@@ -1,3 +1,44 @@
+- name: Get the hosted zone infor
+  route53_facts:
+    dns_name: "{{ tld_name_internal }}"
+    query: hosted_zone
+    hosted_zone_method: list_by_name
+    profile: "{{ profile|default(omit) }}"
+  register: hosted_zone_out
+
+- set_fact:
+    hosted_zone_id: "{{ hosted_zone_out.HostedZones.0.Id.split('/')[2] }}"
+
+- name: Get the record set info
+  route53_facts:
+    profile: "{{ profile|default(omit) }}"
+    query: record_sets
+    hosted_zone_id: "{{ hosted_zone_id }}"
+    start_record_name: "{{ rds_internal_dns }}"
+    max_items: 2
+  register: record_set_out
+
+- debug:
+    var: record_set_out
+
+# The .Name from aws fact has the last dot . (because it is convention DNS
+# name) - but normal record does not have it. Thus we have to extract it using
+# string index [0:-1]
+- name: Remove Route 53 internal rds master record entry for {{ role_type }}
+  route53:
+    profile: "{{ profile|default(omit) }}"
+    private_zone: true
+    state: absent
+    zone: "{{ tld_name_internal }}"
+    record: "{{ item.Name[0:-1] }}"
+    value: "{{ item.ResourceRecords.0.Value }}"
+    type: "{{ item.Type }}"
+    retry_interval: 5
+    overwrite: true
+    ttl: "{{ item.TTL }}"
+  with_items: "{{ record_set_out.ResourceRecordSets }}"
+  when: item.Name[0:-1] == rds_internal_dns
+
 - name: Get RDS facts
   rds_instance_facts:
     region: "{{ region }}"
@@ -41,7 +82,6 @@
     name: "{{ rds_subnet_group.name }}"
     state: absent
 
-
 # AWS refused to delete even nothing holds it - Service: AmazonRDS; Status
 # Code: 400; Error Code: InvalidOptionGroupStateFault - thus temporary put
 # ignore_errors here
@@ -53,34 +93,3 @@
     apply_immediately: "{{ rds_option_group.apply_immediately }}"
     state: absent
   ignore_errors: yes
-
-- name: Get the hosted zone infor
-  route53_facts:
-    dns_name: "{{ tld_name_internal }}"
-    query: hosted_zone
-    hosted_zone_method: list_by_name
-    profile: "{{ profile|default(omit) }}"
-  register: hosted_zone_out
-
-- set_fact:
-    hosted_zone_id: "{{ hosted_zone_out.HostedZones.0.Id.split('/')[2] }}"
-
-- name: Get the record set info
-  route53_facts:
-    profile: "{{ profile|default(omit) }}"
-    query: record_sets
-    hosted_zone_id: "{{ hosted_zone_id }}"
-    start_record_name: "{{ rds_internal_dns }}"
-    max_items: 1
-  register: record_set_out
-
-- name: Remove Route 53 internal rds master record entry for {{ role_type }}
-  route53:
-    profile: "{{ profile|default(omit) }}"
-    private_zone: true
-    state: absent
-    zone: "{{ tld_name_internal }}"
-    record: "{{ rds_internal_dns }}"
-    value: "{{ record_set_out.ResourceRecordSets.0.ResourceRecords.0.Value }}"
-    retry_interval: 5
-  with_items: "{{ rds_facts.results.0.instances }}"
