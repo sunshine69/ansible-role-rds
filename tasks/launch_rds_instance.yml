@@ -1,0 +1,115 @@
+- name: Gather facts about the {{ role_type }} RDS Security Groups in {{ env }}
+  ec2_group_facts:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    filters:
+      "tag:Environment": "{{ env }}"
+      "tag:Application": "{{ role_type }}"
+      "tag:Tier": rds
+      "tag:Engine" : "{{ rds_item.engine }}"
+      "tag:Public": "{{ rds_item.rds_is_public|default('*')|string }}"
+  register: rds_security_groups
+
+- fail:
+    msg: "Not found any security group for rds with this engine type and role type"
+  when: not rds_security_groups.security_groups
+
+- name: set the security group list fact
+  set_fact:
+    vpc_security_group_ids: "{{ rds_security_groups | json_query('security_groups[].group_id') }}"
+
+- debug:
+    msg: "List of rds_security_groups found {{ vpc_security_group_ids }}"
+    verbosity: 2
+
+# If existing subnet group having different vpc-id then the below will fail
+# with message 'The new Subnets are not in the same Vpc as the existing subnet
+# group'. Reason is aws does not allow to edit/change the vpcid.
+# To fix, use the aws console and manually delete these rds subnet group and
+# re-run ansible again.
+- name: create the rds_subnet_group
+  rds_subnet_group:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    name: "{{ rds_item.rds_subnet_group.name }}"
+    description: "{{ rds_item.rds_subnet_group.description }}"
+    subnets: "{{ rds_subnets.subnets | map(attribute='id') |list }}"
+    state: present
+
+- debug:
+    var: rds_parameter_group
+    verbosity: 2
+
+- name: create the parameter_group
+  rds_param_group:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    name: "{{ rds_item.rds_parameter_group.name }}"
+    description: "{{ rds_item.rds_parameter_group.description }}"
+    params: "{{ rds_item.rds_parameter_group.params }}"
+    engine: "{{ rds_item.engine_name|default(rds_item.engine + rds_item.major_engine_version) }}"
+    state: present
+    immediate: "{{ rds_item.rds_parameter_group.apply_immediately|default('no') }}"
+    tags:
+      Environment: "{{ env }}"
+      Tier: rds
+      Application: "{{ role_type }}"
+  register: rds_param_group
+
+- debug:
+    var: rds_option_group
+    verbosity: 2
+
+- name: create the option_group_name
+  rds_option_group:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    option_group_name: "{{ rds_item.rds_option_group.name }}"
+    engine_name: "{{ rds_item.engine }}"
+    major_engine_version: "{{ rds_item.major_engine_version }}"
+    option_group_description: "{{ rds_item.rds_option_group.description }}"
+    apply_immediately: "{{ rds_item.rds_option_group.apply_immediately|default('yes') }}"
+    state: present
+
+- name: Create the {{ role_type }}-{{ db_instance_type }} RDS instance
+  rds_instance:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    db_instance_identifier: "{{ rds_item.db_instance_identifier }}"
+    db_name: "{{ rds_item.database|default(omit) }}"
+    engine: "{{ rds_item.engine }}"
+    engine_version: "{{ rds_item.major_engine_version }}"
+    db_instance_class: "{{ rds_item.db_instance_class }}"
+    master_username: "{{ rds_item.master_user_name }}"
+    master_user_password: "{{ rds_item.master_user_password }}"
+    size: "{{ rds_item.allocated_storage }}"
+    storage_type: "{{ rds_item.storage_type }}"
+    db_parameter_group_name: "{{ rds_item.rds_parameter_group.name  }}"
+    option_group_name: "{{ rds_item.rds_option_group.name }}"
+    vpc_security_group_ids: "{{ vpc_security_group_ids }}"
+    subnet: "{{ rds_item.rds_subnet_group.name }}"
+    tags: "{{ rds_item.tags }}"
+    multi_az: "{{ rds_item.multi_az }}"
+    wait: "{{ rds_item.wait }}"
+    wait_timeout: "{{ rds_item.wait_timeout }}"
+    force_password_update: "{{ rds_item.rds_force_password_update|default('no') }}"
+    license_model: "{{ rds_item.license_model|default(omit) }}"
+    backup_retention_period: "{{ rds_item.backup_retention_period|default(omit) }}"
+    preferred_backup_window: "{{ rds_item.preferred_backup_window|default(omit) }}"
+    preferred_maintenance_window: "{{ rds_item.preferred_maintenance_window|default(omit) }}"
+  register: master_rds_instance
+  when: "db_instance_type  == 'master'"
+
+- name: Create Route 53 internal rds master record entry for {{ role_type }}
+  route53:
+    profile: "{{ profile|default(omit) }}"
+    private_zone: true
+    command: create
+    zone: "{{ tld_name_internal }}"
+    record: "{{ rds_item.rds_internal_dns }}"
+    value: "{{ item.instance.endpoint.address }}"
+    type: CNAME
+    ttl: 300
+    overwrite: yes
+    retry_interval: 5
+  with_items: "{{ master_rds_instance.results|default([]) }}"

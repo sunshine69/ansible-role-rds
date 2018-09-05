@@ -1,0 +1,82 @@
+- name: Get the record set info
+  route53_facts:
+    profile: "{{ profile|default(omit) }}"
+    query: record_sets
+    hosted_zone_id: "{{ hosted_zone_id }}"
+    start_record_name: "{{ rds_item.rds_internal_dns }}"
+    max_items: 2
+  register: record_set_out
+
+- debug:
+    var: record_set_out
+
+# The .Name from aws fact has the last dot . (because it is convention DNS
+# name) - but normal record does not have it. Thus we have to extract it using
+# string index [0:-1]
+- name: Remove Route 53 internal rds master record entry for {{ role_type }}
+  route53:
+    profile: "{{ profile|default(omit) }}"
+    private_zone: true
+    state: absent
+    zone: "{{ tld_name_internal }}"
+    record: "{{ item.Name[0:-1] }}"
+    value: "{{ item.ResourceRecords.0.Value }}"
+    type: "{{ item.Type }}"
+    retry_interval: 5
+    overwrite: true
+    ttl: "{{ item.TTL }}"
+  with_items: "{{ record_set_out.ResourceRecordSets }}"
+  when: item.Name[0:-1] == rds_item.rds_internal_dns
+
+- name: Get RDS facts
+  rds_instance_facts:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    name: "{{ rds_item.db_instance_identifier }}"
+  when: "rds_item.db_instance_type  == 'master'"
+  register: rds_facts
+
+- debug:
+    var: rds_facts
+    verbosity: 2
+
+- name: Remove the {{ role_type }}-{{ rds_item.db_instance_type }} RDS instance
+  rds_instance:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    db_instance_identifier: "{{ rds_item.db_instance_identifier }}"
+    wait: "{{ rds_item.wait }}"
+    wait_timeout: "{{ rds_item.wait_timeout }}"
+    state: absent
+  when: "rds_item.db_instance_type  == 'master'"
+
+- name: Identify snapshots to remove
+  rds_snapshot_facts:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+
+- name: remove the parameter groups
+  rds_param_group:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    name: "{{ rds_item.rds_parameter_group.name }}"
+    state: absent
+
+- name: Remove the rds_subnet_group
+  rds_subnet_group:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    name: "{{ rds_item.rds_subnet_group.name }}"
+    state: absent
+
+# AWS refused to delete even nothing holds it - Service: AmazonRDS; Status
+# Code: 400; Error Code: InvalidOptionGroupStateFault - thus temporary put
+# ignore_errors here
+- name: remove the option groups
+  rds_option_group:
+    region: "{{ region }}"
+    profile: "{{ profile|default(omit) }}"
+    option_group_name: "{{ rds_item.rds_option_group.name }}"
+    apply_immediately: "{{ rds_item.rds_option_group.apply_immediately }}"
+    state: absent
+  ignore_errors: yes
