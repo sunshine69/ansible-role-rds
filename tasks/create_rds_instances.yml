@@ -133,15 +133,15 @@
     verbosity: 2
 
 - name: Create Route 53 internal rds master record entry for {{ role_type }}
-  route53:
-    profile: "{{ profile|default(omit) }}"
-    private_zone: true
-    command: create
-    zone: "{{ tld_name_internal }}"
-    record: "{{ rds_internal_dns }}"
-    value: "{{ item.instance.endpoint.address }}"
-    type: CNAME
-    ttl: 300
-    overwrite: yes
-    retry_interval: 5
+  include_role:
+    name: aws_route53
+  vars:
+    aws_route53_profile: "{{ profile|default(omit) }}"
+    aws_route53:
+      zone: "{{ tld_name_internal }}"
+      record: "{{ rds_internal_dns }}"
+      value: "{{ item.instance.endpoint.address }}"
+      type: CNAME
+      ttl: 300
+      overwrite: yes
   with_items: "{{ master_rds_instance.results|default([]) }}"
