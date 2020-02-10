@@ -138,7 +138,7 @@
   vars:
     aws_route53_profile: "{{ profile|default(omit) }}"
     aws_route53:
-      zone: "{{ tld_name_internal }}"
+      zone: "{{ env }}.{{ tld_name_internal }}"
       record: "{{ rds_internal_dns }}"
       value: "{{ item.instance.endpoint.address }}"
       type: CNAME
