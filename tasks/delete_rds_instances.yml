@@ -10,7 +10,7 @@
   when: "db_instance_type  == 'master'"
 
 - name: Identify snapshots to remove
-  rds_snapshot_facts:
+  rds_snapshot_info:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
 
