@@ -1,5 +1,5 @@
 - name: Gather facts about the {{ role_type }} RDS Subnets in {{ env }}
-  ec2_vpc_subnet_facts:
+  ec2_vpc_subnet_info:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
     filters:
@@ -13,7 +13,7 @@
     verbosity: 2
 
 - name: Gather facts about the {{ role_type }} RDS Security Groups in {{ env }}
-  ec2_group_facts:
+  ec2_group_info:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
     filters:

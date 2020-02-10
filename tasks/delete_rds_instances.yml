@@ -9,7 +9,7 @@
       record: "{{ rds_internal_dns }}"
 
 - name: Get RDS facts
-  rds_instance_facts:
+  rds_instance_info:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
     name: "{{ item.db_instance_identifier }}"
@@ -33,7 +33,7 @@
   when: "db_instance_type  == 'master'"
 
 - name: Identify snapshots to remove
-  rds_snapshot_facts:
+  rds_snapshot_info:
     region: "{{ region }}"
     profile: "{{ profile|default(omit) }}"
 
